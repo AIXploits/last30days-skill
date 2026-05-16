@@ -97,13 +97,17 @@ if [[ -n "$HAS_BSKY" ]]; then
   SOURCE_COUNT=$((SOURCE_COUNT + 1))
 fi
 if [[ -n "$HAS_SCRAPECREATORS" ]]; then
-  # Start with Reddit comments + TikTok + Instagram, subtract any in EXCLUDE_SOURCES
+  # Start with Reddit comments + TikTok + Instagram, subtract any in EXCLUDE_SOURCES.
+  # Normalise EXCLUDED (lowercase + collapse whitespace around commas + strip outer
+  # whitespace) so the matching mirrors pipeline.py's .strip().lower() parsing.
   SC_ADD=3
   EXCLUDED="${ENV_EXCLUDE_SOURCES:-${EXCLUDE_SOURCES:-}}"
-  if [[ ",$EXCLUDED," == *",tiktok,"* ]]; then
+  EXCLUDED_NORM=$(printf '%s' "$EXCLUDED" | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[[:space:]]*,[[:space:]]*/,/g; s/^[[:space:]]+//; s/[[:space:]]+$//')
+  if [[ ",$EXCLUDED_NORM," == *",tiktok,"* ]]; then
     SC_ADD=$((SC_ADD - 1))
   fi
-  if [[ ",$EXCLUDED," == *",instagram,"* ]]; then
+  if [[ ",$EXCLUDED_NORM," == *",instagram,"* ]]; then
     SC_ADD=$((SC_ADD - 1))
   fi
   SOURCE_COUNT=$((SOURCE_COUNT + SC_ADD))
