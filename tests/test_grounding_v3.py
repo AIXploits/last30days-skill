@@ -163,6 +163,12 @@ class ParallelSearchTests(unittest.TestCase):
                 mock_req.call_args.kwargs["headers"]["Authorization"],
             )
 
+    def test_parallel_search_returns_empty_for_no_results(self):
+        with patch("lib.grounding.http.request", return_value={"results": []}):
+            items, artifact = grounding.parallel_search("test", ("2026-02-25", "2026-03-27"), "key")
+            self.assertEqual([], items)
+            self.assertEqual(0, artifact["resultCount"])
+
 
 class WebSearchDispatchTests(unittest.TestCase):
     def test_auto_selects_brave_when_key_present(self):
@@ -214,6 +220,14 @@ class WebSearchDispatchTests(unittest.TestCase):
             grounding.web_search("test", ("2026-02-25", "2026-03-27"), config, backend="auto")
             mock_exa.assert_called_once()
             mock_serper.assert_not_called()
+
+    def test_auto_prefers_serper_over_parallel(self):
+        config = {"SERPER_API_KEY": "serper-key", "PARALLEL_API_KEY": "parallel-key"}
+        with patch("lib.grounding.serper_search", return_value=([], {})) as mock_serper, \
+             patch("lib.grounding.parallel_search", return_value=([], {})) as mock_parallel:
+            grounding.web_search("test", ("2026-02-25", "2026-03-27"), config, backend="auto")
+            mock_serper.assert_called_once()
+            mock_parallel.assert_not_called()
 
     def test_auto_prefers_brave_when_all_keys_present(self):
         config = {"BRAVE_API_KEY": "brave-key", "EXA_API_KEY": "exa-key", "SERPER_API_KEY": "serper-key"}
