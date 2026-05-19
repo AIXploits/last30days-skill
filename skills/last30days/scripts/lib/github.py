@@ -62,6 +62,17 @@ def _resolve_token(token: Optional[str] = None) -> Optional[str]:
     return None
 
 
+def resolve_token(token: Optional[str] = None) -> Optional[str]:
+    """Public alias for ``_resolve_token``.
+
+    The pipeline calls this once before ``search_github`` and
+    ``enrich_with_comments`` so the ``gh auth token`` subprocess fallback
+    only fires once per query when ``GITHUB_TOKEN`` is unset, instead of
+    twice (once per call site).
+    """
+    return _resolve_token(token)
+
+
 def _fetch_json(
     url: str,
     token: Optional[str] = None,
@@ -161,13 +172,21 @@ def search_github(
     Returns:
         Dict envelope. Empty ``items`` list on any failure.
     """
+    count = DEPTH_LIMITS.get(depth, DEPTH_LIMITS["default"])
+    core = extract_core_subject(topic)
     resolved_token = _resolve_token(token)
     if not resolved_token:
         _log("No GitHub token available (set GITHUB_TOKEN or install gh CLI)")
-        return {"items": [], "error": "no token"}
-
-    count = DEPTH_LIMITS.get(depth, DEPTH_LIMITS["default"])
-    core = extract_core_subject(topic)
+        return {
+            "items": [],
+            "error": "no token",
+            "context": {
+                "core": core,
+                "from_date": from_date,
+                "to_date": to_date,
+                "count": count,
+            },
+        }
     _log(f"Searching for '{core}' (raw: '{topic}', since {from_date}, count={count})")
 
     # Build search query with date filter

@@ -80,6 +80,21 @@ class TestSearchGithub(unittest.TestCase):
         result = github.search_github("react", "2026-03-01", "2026-03-31", token=None)
         self.assertEqual(result.get("items", []), [])
         self.assertIn("error", result)
+        # Envelope shape must match the fetch-failure path: context is
+        # always present so callers (and parse_github_response) can read
+        # diagnostic fields without branching on which failure mode hit.
+        self.assertIn("context", result)
+        self.assertEqual(result["context"]["from_date"], "2026-03-01")
+        self.assertEqual(result["context"]["to_date"], "2026-03-31")
+
+    def test_resolve_token_public_alias(self):
+        """resolve_token is the public entry point pipeline uses; _resolve_token stays
+        private. Both should return the same value for the same input."""
+        self.assertEqual(
+            github.resolve_token("explicit-token"),
+            github._resolve_token("explicit-token"),
+        )
+        self.assertEqual(github.resolve_token("explicit-token"), "explicit-token")
 
     @patch.object(github, "_fetch_json")
     @patch.object(github, "_resolve_token", return_value="test-token")
