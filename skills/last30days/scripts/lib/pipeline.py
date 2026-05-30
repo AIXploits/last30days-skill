@@ -188,13 +188,14 @@ def run(
     tiktok_creators: list[str] | None = None,
     ig_creators: list[str] | None = None,
     lookback_days: int = 30,
+    as_of_date: str | None = None,
     github_user: str | None = None,
     github_repos: list[str] | None = None,
     internal_subrun: bool = False,
 ) -> schema.Report:
     settings = DEPTH_SETTINGS[depth]
     requested_sources = normalize_requested_sources(requested_sources)
-    from_date, to_date = dates.get_date_range(lookback_days)
+    from_date, to_date = dates.get_date_range(lookback_days, as_of_date=as_of_date)
 
     if mock:
         runtime = providers.mock_runtime(config, depth)

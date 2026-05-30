@@ -42,7 +42,7 @@ if os.name == "nt":
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from lib import env, html_render, pipeline, render, schema, ui
+from lib import dates, env, html_render, pipeline, render, schema, ui
 
 _child_pids: set[int] = set()
 _child_pids_lock = threading.Lock()
@@ -89,6 +89,14 @@ def parse_search_flag(raw: str) -> list[str]:
         raise SystemExit("--search requires at least one source.")
     return sources
 
+def parse_as_of_date_arg(value: str) -> str:
+    try:
+        parsed = dates.parse_as_of_date(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+    if parsed is None:
+        raise argparse.ArgumentTypeError("--as-of must be in YYYY-MM-DD format.")
+    return parsed
 
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
@@ -269,6 +277,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=30,
         help="Number of days to look back for research (default: 30, watchlist uses 90)",
     )
+    parser.add_argument(
+    "--as-of",
+    dest="as_of_date",
+    type=parse_as_of_date_arg,
+    help=(
+        "End date for the lookback window in YYYY-MM-DD format. "
+        "When set, --days looks back from this date instead of today."
+    ),
+)
     parser.add_argument("--auto-resolve", action="store_true",
                         help="Use web search to discover subreddits/handles before planning (for platforms without WebSearch)")
     parser.add_argument("--github-user", help="GitHub username for person-mode search (e.g., steipete)")
@@ -750,6 +767,7 @@ def main() -> int:
                 tiktok_creators=tiktok_creators,
                 ig_creators=ig_creators,
                 lookback_days=args.lookback_days,
+                as_of_date=args.as_of_date,
                 github_user=github_user,
                 github_repos=github_repos,
             )
@@ -879,6 +897,7 @@ def main() -> int:
                     github_repos=kwargs["github_repos"],
                     web_backend=args.web_backend,
                     lookback_days=args.lookback_days,
+                    as_of_date=args.as_of_date,
                     internal_subrun=True,
                 )
                 report.artifacts["resolved"] = resolved_effective
