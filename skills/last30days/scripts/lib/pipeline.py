@@ -484,10 +484,16 @@ def run(
         skip_sources=_github_skip_retry,
     )
 
-    # Clear errors for sources that returned items despite partial failures.
-    # A source that 429'd on one subquery but succeeded on another is not "errored".
+    # Reclassify partial failures as DEGRADED instead of silently dropping them.
+    # A source that 429'd on one subquery but succeeded on another is not a hard
+    # failure, but it is not healthy either: it likely returned fewer results
+    # than it should have. Move it out of errors_by_source (so it isn't reported
+    # as "failed") and into degraded_by_source (so it survives into warnings),
+    # rather than deleting the signal outright as the engine used to.
+    degraded_by_source: dict[str, str] = {}
     for source in list(bundle.errors_by_source):
         if bundle.items_by_source.get(source):
+            degraded_by_source[source] = bundle.errors_by_source[source]
             del bundle.errors_by_source[source]
 
     hiring_summary = _apply_hiring_signal_gate(
@@ -524,7 +530,7 @@ def run(
         )
 
     clusters = cluster_candidates(ranked_candidates, plan)
-    warnings = _warnings(items_by_source, ranked_candidates, bundle.errors_by_source)
+    warnings = _warnings(items_by_source, ranked_candidates, bundle.errors_by_source, degraded_by_source)
 
     return schema.Report(
         topic=topic,
@@ -682,6 +688,7 @@ def _warnings(
     items_by_source: dict[str, list[schema.SourceItem]],
     candidates: list[schema.Candidate],
     errors_by_source: dict[str, str],
+    degraded_by_source: dict[str, str] | None = None,
 ) -> list[str]:
     warnings: list[str] = []
     if not candidates:
@@ -697,6 +704,13 @@ def _warnings(
         warnings.append("Top evidence is highly concentrated in one source.")
     if errors_by_source:
         warnings.append(f"Some sources failed: {', '.join(sorted(errors_by_source))}")
+    if degraded_by_source:
+        # Partial failures: the source returned some items but errored/timed out
+        # on at least one subquery, so its coverage is likely incomplete. Kept
+        # distinct from hard failures so the signal is not silently dropped.
+        warnings.append(
+            f"Some sources returned partial results (degraded): {', '.join(sorted(degraded_by_source))}"
+        )
     if not items_by_source:
         warnings.append("No source returned usable items.")
     return warnings
