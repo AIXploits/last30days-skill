@@ -36,7 +36,13 @@ class TestPluginContract(unittest.TestCase):
         self.assertEqual("last30days-skill", marketplace["name"])
         self.assertIn("last30days", plugin_by_name)
         plugin = plugin_by_name["last30days"]
-        self.assertEqual("./", plugin["source"]["path"])
+        self.assertEqual(
+            {
+                "source": "url",
+                "url": "https://github.com/mvanhorn/last30days-skill.git",
+            },
+            plugin["source"],
+        )
 
     def test_versions_match_across_manifests(self) -> None:
         pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
