@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.0] - 2026-07-04
+
+### Added
+
+- Instagram comments as a first-class ScrapeCreators source: `instagram.enrich_with_comments` fetches top comments via `GET /v2/instagram/post/comments` (ranked by `comment_like_count`), gated by `SCRAPECREATORS_API_KEY` + `instagram_comments` in `INCLUDE_SOURCES`. Full vote-weighting parity with YouTube/TikTok - a dedicated `_instagram_engagement` gives IG posts the same top-comment ranking carve-out, and IG comments render with a "likes" label. ([#751](https://github.com/mvanhorn/last30days-skill/pull/751))
+- Comments are now on by default: the first-run Step 5 Recommended tier enables top comments for TikTok, Instagram, and YouTube (`INCLUDE_SOURCES=tiktok,instagram,youtube_comments,tiktok_comments,instagram_comments`); the Everything tier adds Threads + Pinterest. Comments were previously an opt-in "Everything" feature. ([#751](https://github.com/mvanhorn/last30days-skill/pull/751))
+
+### Changed
+
+- The cross-platform "Top Community Comments" list now selects **round-robin by within-platform rank** (every platform's #1, then #2, then #3) instead of a global vote-magnitude sort, so the top-3-of-each-platform outranks the 4th-of-any and each platform's #1 is guaranteed a slot - a viral platform can no longer sweep the list. The list also drops the per-platform absolute vote floor so a less-watched video's high-signal low-vote comment still surfaces (the per-candidate card keeps its floor). ([#751](https://github.com/mvanhorn/last30days-skill/pull/751))
+
+### Fixed
+
+- First-run wizard: the welcome pitch is embedded directly in the setup modal (the only always-visible surface) instead of a separate `--welcome` message that Claude Code folds behind "ctrl+o to expand"; the cookie-consent and ScrapeCreators-offer copy now name every installed CLI (yt-dlp, Digg, arXiv, Techmeme) and describe the key's real reach (auto Reddit enrichment + YouTube search backstop), with the GitHub device code auto-copied to the clipboard. ([#750](https://github.com/mvanhorn/last30days-skill/pull/750))
+
 ## [3.9.4] - 2026-07-04
 
 ### Fixed
